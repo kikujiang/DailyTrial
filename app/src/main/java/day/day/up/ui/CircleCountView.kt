@@ -12,21 +12,17 @@ class CircleCountView @JvmOverloads constructor(ctx:Context,attr: AttributeSet?=
 
     private val tag:String = "count"
 
-    private var mWidth:Float = 200f
-    private var mHeight:Float = 200f
-    private var mRadius:Float = 100f
-    private var mStrokeWidth:Float = 1f
+    private var totalH:Int = 0
+    private var totalW:Int = 0
+    private var currentTop:Int = 0
 
-    private var controlX:Float = 0f
-    private var controlY:Float = 0f
-    private var waveY:Float = 0f
+    private lateinit var bitmap: Bitmap
 
 
     private lateinit var mPaint:Paint
-    private lateinit var mPaint1:Paint
-    private lateinit var mCanvas: Canvas
     private lateinit var mPath: Path
     private lateinit var mode: PorterDuffXfermode
+    private lateinit var rectF: RectF
 
 
     init {
@@ -59,6 +55,36 @@ class CircleCountView @JvmOverloads constructor(ctx:Context,attr: AttributeSet?=
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
 
+        rectF.top = currentTop.toFloat()
+
+        val sc = canvas?.saveLayer(0f,0f,totalW.toFloat(),totalH.toFloat(),mPaint)
+        canvas?.drawBitmap(bitmap,0f,0f,null)
+        mPaint.xfermode = mode
+        canvas?.drawRect(rectF,mPaint)
+        mPaint.xfermode = null
+
+        canvas?.restoreToCount(sc!!)
+
+        if(currentTop > 0){
+            currentTop--
+            postInvalidate()
+        }
+
+        if(currentTop == 0){
+            currentTop = bitmap.height
+            postInvalidate()
+        }
+
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        setMeasuredDimension(bitmap.width,bitmap.height)
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        totalW = w
+        totalH = h
     }
 
     private fun initAttrs(ctx:Context,attr: AttributeSet?,defStyle:Int){
@@ -80,23 +106,21 @@ class CircleCountView @JvmOverloads constructor(ctx:Context,attr: AttributeSet?=
     }
 
     private fun initPaint(){
-        mPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        mPaint = Paint().apply {
             style = Paint.Style.FILL
-        }
-        mPaint1 = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
+            isDither = true
+            isAntiAlias = true
+            isFilterBitmap = true
+            color = Color.RED
         }
 
-        waveY = 7f/8*height
-        controlY = 17f / 16*height
+        bitmap = BitmapFactory.decodeResource(resources,R.mipmap.test)
+
+        currentTop = bitmap.height
 
         mPath = Path()
 
-        mCanvas = Canvas().apply {
-            mPaint1.strokeWidth = mStrokeWidth
-            mPaint1.color = Color.GREEN
-            drawCircle(mWidth,mHeight,mRadius,mPaint1)
-        }
+        rectF = RectF(0f,currentTop.toFloat(),bitmap.width.toFloat(),bitmap.height.toFloat())
 
         mode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
 
